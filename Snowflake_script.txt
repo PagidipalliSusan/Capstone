@@ -1,0 +1,144 @@
+create warehouse pc_dbt_wh;
+use warehouse pc_dbt_wh;
+drop warehouse pc_dbt_wh;
+
+create database PC_DBT_DB;
+use database PC_DBT_DB;
+drop database PC_DBT_DB;
+
+--File_format
+create or replace file format csv_file_format
+type='csv'
+FIELD_OPTIONALLY_ENCLOSED_BY = '"' 
+SKIP_HEADER = 1;
+
+--Integration Object
+create or replace storage integration capstone_int
+  type = external_stage
+  storage_provider = s3
+  enabled = true
+  storage_aws_role_arn = 'arn:aws:iam::880001414910:role/capstone-role'
+  storage_allowed_locations = ('s3://capstone-12/csv/');
+
+  
+  desc integration capstone_int;
+
+
+  --Create external stage
+  create or replace stage capstone_stage
+  URL = 's3://capstone-12/csv/'
+  STORAGE_INTEGRATION = capstone_int
+  file_format = csv_file_format;
+
+
+--Create tables for data ingestion
+
+--Transaction table
+create or replace table transaction(
+    transaction_id STRING,
+    customer_id STRING,
+    transaction_date TIMESTAMP_NTZ,
+    amount FLOAT,
+    currency STRING,
+    transaction_type STRING,
+    channel STRING,
+    merchant_name STRING,
+    merchant_category STRING,
+    location_country STRING,
+    location_city STRING,
+    is_flagged BOOLEAN
+);
+
+--Customer Table
+create or replace table customer(
+    customer_id STRING,
+    first_name STRING,
+    last_name STRING,
+    date_of_birth DATE,
+    gender STRING,
+    email STRING,
+    phone_number STRING,
+    address STRING,
+    city STRING,
+    country STRING,
+    occupation STRING,
+    income_bracket STRING,
+    customer_since DATE
+);
+
+--Accounts Table
+create or replace table account(
+    account_id STRING,
+    customer_id STRING,
+    account_type STRING,
+    account_status STRING,
+    open_date DATE,
+    current_balance FLOAT,
+    currency STRING,
+    credit_limit FLOAT
+);
+
+--Credit data table
+create or replace table credit(
+    customer_id STRING,
+    credit_score INT,
+    number_of_credit_accounts INT,
+    total_credit_limit FLOAT,
+    total_credit_used FLOAT,
+    number_of_late_payments INT,
+    bankruptcies INT
+);
+
+-- Create a Snowpipe to load data from S3 into the list_table
+CREATE OR REPLACE PIPE transaction_pipe AUTO_INGEST = TRUE AS
+COPY INTO transaction 
+FROM @capstone_stage/transactions.csv
+FILE_FORMAT = csv_file_format;
+
+CREATE OR REPLACE PIPE customer_pipe AUTO_INGEST = TRUE AS
+COPY INTO customer
+FROM @capstone_stage/customers.csv
+FILE_FORMAT = csv_file_format;
+
+CREATE OR REPLACE PIPE account_pipe AUTO_INGEST = TRUE AS
+COPY INTO account 
+FROM @capstone_stage/accounts.csv
+FILE_FORMAT = csv_file_format;
+
+CREATE OR REPLACE PIPE credit_pipe AUTO_INGEST = TRUE AS
+COPY INTO credit 
+FROM @capstone_stage/credit_data.csv
+FILE_FORMAT = csv_file_format;
+
+show pipes;
+
+alter pipe transaction_pipe refresh;
+alter pipe customer_pipe refresh;
+alter pipe account_pipe refresh;
+alter pipe credit_pipe refresh;
+
+Select  SYSTEM$PIPE_STATUS('transaction_pipe');
+Select  SYSTEM$PIPE_STATUS('customer_pipe');
+Select  SYSTEM$PIPE_STATUS('account_pipe');
+Select  SYSTEM$PIPE_STATUS('credit_pipe');
+
+select * from transaction;
+select * from customer;
+select * from account;
+select * from credit;
+
+
+GRANT ALL PRIVILEGES ON WAREHOUSE PC_DBT_WH TO ROLE PC_DBT_ROLE;
+
+GRANT All PRIVILEGES ON DATABASE PC_DBT_DB TO ROLE PC_DBT_ROLE;
+
+REVOKE APPLYBUDGET ON DATABASE PC_DBT_DB FROM ROLE PC_DBT_ROLE;
+  
+grant all privileges on schema PUBLIC to role PC_DBT_ROLE;
+ 
+grant select on all tables in schema PUBLIC to role PC_DBT_ROLE;
+
+--GRANT ALL PRIVILEGES ON FUTURE TABLES IN DATABASE PC_DBT_DB;
+GRANT ALL PRIVILEGES ON FUTURE TABLES IN SCHEMA PC_DBT_DB.PUBLIC TO ROLE PC_DBT_ROLE;
+
+SHOW GRANTS ON DATABASE PC_DBT_DB;

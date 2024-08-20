@@ -1,0 +1,41 @@
+select * from pc_dbt_db.public.account    -- account_dbt.sql
+
+select * from pc_dbt_db.public.credit    --credit_dbt.sql
+
+
+--customer_dbob.sql
+SELECT 
+    customer_id,
+    first_name,
+    last_name,
+    pc_dbt_db.public.cleanse_dob(customer_since, date_of_birth) AS cleansed_dob
+FROM 
+    pc_dbt_db.public.customer
+	
+	
+
+
+--customer_name.sql
+SELECT
+  customer_id,
+  transform_first_name(first_name) AS first_name_cleaned,
+  transform_first_name(last_name) AS last_name_cleaned
+FROM
+  pc_dbt_db.public.customer
+  
+  
+--tranformed_customer.sql
+select * from pc_dbt_db.public.customer
+
+--transaction_dbt.sql
+select * from pc_dbt_db.public.transaction
+
+--Create resource monitor
+CREATE OR REPLACE RESOURCE MONITOR my_resource_monitor
+WITH 
+    CREDIT_QUOTA = 50,                  -- Set a quota of 50 credits per month
+    FREQUENCY = MONTHLY,                -- Reset the monitor monthly
+    START_TIMESTAMP = '2024-08-19';
+
+ALTER WAREHOUSE pc_dbt_wh
+SET RESOURCE_MONITOR = my_resource_monitor;

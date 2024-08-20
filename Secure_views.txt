@@ -1,0 +1,31 @@
+CREATE USER user2
+PASSWORD = 'user1'
+DEFAULT_ROLE = role1
+DEFAULT_WAREHOUSE = 'PC_DBT_WH'
+DEFAULT_NAMESPACE = 'PC_DBT_DB.DBT_SPAGIDIPALLI'
+MUST_CHANGE_PASSWORD = FALSE
+COMMENT = 'This is a test user';
+
+create role role1;
+
+USE ROLE role1;
+
+--secure view
+CREATE OR REPLACE SECURE VIEW secure_customer_data AS
+SELECT 
+    customer_id,
+    first_name,
+    last_name,
+    email,
+    phone_number
+FROM 
+    transformed_customer
+WHERE 
+    country = 'United States';
+
+GRANT SELECT ON VIEW secure_customer_data TO ROLE role1;
+GRANT ROLE role1 TO USER user1;
+
+SELECT * FROM secure_customer_data;
+
+
